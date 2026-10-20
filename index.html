@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Daniel Oliveira | Desenvolvedor de Software</title>
+  <meta name="description" content="Portfólio de Daniel Oliveira, desenvolvedor de software e estudante de Análise e Desenvolvimento de Sistemas na FATEC.">
+  <meta name="theme-color" content="#07060b">
+  
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=VT323&display=swap" rel="stylesheet">
+
+  <link rel="preload" as="image" href="assets/retro-pc.jpg">
+  <link rel="prefetch" href="portfolio.html">
+  <link rel="prefetch" href="style.css" as="style">
+  <link rel="prefetch" href="js/data.js" as="script">
+  <link rel="prefetch" href="js/projects.js" as="script">
+  <link rel="prefetch" href="js/carousel3d.js" as="script">
+  <link rel="prefetch" href="js/ui.js" as="script">
+  <link rel="prefetch" href="js/main.js" as="script">
+  <link rel="stylesheet" href="retro.css">
+</head>
+
+<body>
+
+  <!-- ===================================================================
+       OVERLAY DE VÍDEO DE INTRODUÇÃO (Muted garante autoplay instantâneo)
+       =================================================================== -->
+  <div class="intro-overlay" id="introOverlay">
+    <video id="introVideo" autoplay muted playsinline class="intro-video">
+      <source src="assets/intro-camera.mp4" type="video/mp4">
+    </video>
+    
+    <h1 class="intro-title" data-text="BY DANIEL OLIVEIRA">BY DANIEL OLIVEIRA</h1>
+  </div>
+
+  <!-- ===================================================================
+       MOLDURA DE GRAVAÇÃO DA CÂMERA (HUD VHS)
+       =================================================================== -->
+  <div class="vhs-hud" aria-hidden="true">
+    <div class="vhs-hud__row vhs-hud__row--top">
+      <div class="vhs-hud__item">
+        <span class="vhs-rec-dot">●</span> REC
+      </div>
+      <div class="vhs-hud__item">
+        <span>SP</span>
+        <span>4K</span>
+        <span>⚡ 84%</span>
+      </div>
+    </div>
+
+    <div class="vhs-hud__crosshair">+</div>
+
+    <div class="vhs-hud__row vhs-hud__row--bottom">
+      <div class="vhs-hud__item mono">
+        <span id="vhs-date">10-17-98</span>
+        <span id="vhs-time">17:30:00</span>
+      </div>
+      <div class="vhs-hud__item">
+        <span>PLAY ▶</span>
+      </div>
+    </div>
+  </div>
+
+  <main class="room" id="room">
+    <div class="scene" id="scene">
+      <img class="scene__bg" id="scene-bg" src="assets/retro-pc.jpg" alt="" width="1024" height="1024" draggable="false">
+
+      <!-- Area preta do monitor -->
+      <div class="screen" id="screen">
+        <iframe class="screen__frame" id="site" data-src="portfolio.html"
+                title="Portfólio de Daniel Oliveira" allow="clipboard-write"></iframe>
+
+        <!-- Tela de boot -->
+        <div class="boot" id="boot">
+          <canvas class="boot__static" id="boot-static" aria-hidden="true"></canvas>
+          <div class="boot__stage">
+            <button class="boot__btn" id="boot-btn" type="button" aria-label="Iniciar portfólio">INICIAR</button>
+          </div>
+        </div>
+
+        <span class="screen__glass" aria-hidden="true"></span>
+      </div>
+    </div>
+
+    <a class="fullscreen-link" href="portfolio.html">Abrir em tela cheia ↗</a>
+  </main>
+
+  <noscript>
+    <style>.room { display: none; }</style>
+    <p style="font-family: sans-serif; padding: 2rem;">
+      Ative o JavaScript ou <a href="portfolio.html">abra o portfólio diretamente</a>.
+    </p>
+  </noscript>
+
+  <script src="retro.js"></script>
+</body>
+</html>

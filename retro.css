@@ -1,0 +1,436 @@
+/* =====================================================================
+   RETRO | retro.css
+   Cena do monitor CRT. Nao altera nada do portfolio (style.css e js/).
+
+   Linha do tempo
+     0 s       cena levemente afastada (--zoom-from), transparente
+     0 a 3 s   zoom suave e continuo ate o enquadramento final (--zoom-ms)
+     ~2,4 s    o botao INICIAR surge no vidro; passa a piscar em ~3 s
+     clique    estatica (canvas) -> portfolio carregado no iframe -> CRT "liga"
+
+   Como funciona o enquadramento
+     1. A foto (1024x1024) vive dentro de .scene, um quadrado de lado --S.
+     2. --S faz a tela ocupar --zoom-w% da largura (ou --zoom-h% da altura).
+     3. .scene fica posicionada com o CENTRO da tela no centro da janela.
+     4. .screen cobre exatamente a area preta da foto (medida em pixels).
+     5. O portfolio roda num iframe de 1120 px reduzido por scale() (--k, retro.js).
+
+   Para ajustar: GEOMETRIA (encaixe), ZOOM (enquadramento) e BOOT (tempos).
+   ===================================================================== */
+
+:root {
+  /* GEOMETRIA da tela preta dentro da foto, em pixels da imagem (1024 x 1024) */
+  --img-px: 1024;
+  --sx: 254;   /* borda esquerda */
+  --sy: 292;   /* borda superior */
+  --sw: 530;   /* largura */
+  --sh: 344;   /* altura */
+
+  /* Derivados (numeros sem unidade) */
+  --cx: calc((var(--sx) + var(--sw) / 2) / var(--img-px));   /* centro X da tela, 0 a 1 */
+  --cy: calc((var(--sy) + var(--sh) / 2) / var(--img-px));   /* centro Y da tela, 0 a 1 */
+  --fw: calc(var(--sw) / var(--img-px));                     /* largura da tela / largura da imagem */
+  --fh: calc(var(--sh) / var(--img-px));
+
+  /* ZOOM FINAL: quanto da janela a tela ocupa (em %) */
+  --zoom-w: 72;
+  --zoom-h: 74;
+
+  /* ZOOM DE ABERTURA: a cena comeca em --zoom-from (1 = enquadramento final) */
+  --zoom-from: 0.74;
+  --zoom-ms: 3000ms;                              /* duracao exata do zoom */
+  --zoom-ease: cubic-bezier(0.4, 0, 0.2, 1);      /* suave: acelera e desacelera sem trancos */
+
+  /* BOOT: quando o botao aparece e comeca a piscar (contados a partir do inicio do zoom) */
+  --boot-delay: 2400ms;
+  --blink-delay: 3000ms;
+
+  /* Resolucao virtual do portfolio dentro da tela (largura em px) */
+  --vw-site: 1120;
+
+  /* Unidades de viewport (dvh quando houver suporte) */
+  --u-w: 1vw;
+  --u-h: 1vh;
+
+  --ease: cubic-bezier(0.16, 1, 0.3, 1);
+  --phosphor: #8dffc0;                            /* cor do texto do boot */
+}
+@supports (height: 100dvh) {
+  :root { --u-h: 1dvh; }
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+html, body {
+  height: 100%;
+  overflow: hidden;           /* a pagina nao rola; quem rola e o site dentro da tela */
+  background: #07060b;
+}
+
+.room {
+  /* Lado do quadrado da cena: a tela ocupa --zoom-w% da largura ou --zoom-h% da
+     altura (o que for menor); os max() garantem que a foto sempre cubra a janela. */
+  --S: max(
+    min(calc(var(--zoom-w) * var(--u-w) / var(--fw)), calc(var(--zoom-h) * var(--u-h) / var(--fh))),
+    calc(102 * var(--u-w)),
+    calc(112 * var(--u-h))
+  );
+  position: fixed; inset: 0; overflow: hidden;
+  isolation: isolate;
+}
+
+/* Fundo de seguranca: a mesma foto, desfocada, para as bordas nunca ficarem vazias
+   enquanto a cena esta afastada */
+.room::before {
+  content: ''; position: absolute; inset: 0; z-index: -1;
+  background: #07060b url('assets/retro-pc.jpg') center / cover no-repeat;
+  filter: blur(36px) brightness(.55);
+  transform: scale(1.2);
+}
+
+/* ---------------------------------------------------------------------
+   CENA E ZOOM
+   As animacoes so comecam quando a foto esta decodificada (.is-ready, retro.js),
+   para os 3 s de zoom nunca serem "comidos" por um carregamento lento.
+   --------------------------------------------------------------------- */
+.scene {
+  position: absolute;
+  width: var(--S); height: var(--S);
+  /* centro da tela exatamente no centro da janela */
+  left: calc(50 * var(--u-w) - var(--cx) * var(--S));
+  top:  calc(50 * var(--u-h) - var(--cy) * var(--S));
+  transform-origin: calc(var(--cx) * 100%) calc(var(--cy) * 100%);   /* o zoom gira em torno da tela */
+  animation:
+    approach   var(--zoom-ms) var(--zoom-ease) both,
+    scene-fade 700ms ease-out both;
+}
+.room:not(.is-ready) .scene { animation-play-state: paused; }
+
+/* Uma unica curva de easing do inicio ao fim (sem keyframes intermediarios) */
+@keyframes approach   { from { transform: scale(var(--zoom-from)); } to { transform: none; } }
+@keyframes scene-fade { from { opacity: 0; } to { opacity: 1; } }
+
+/* Bordas da foto suavizadas: nao aparece um retangulo quando a cena esta afastada */
+.scene__bg {
+  display: block; width: 100%; height: 100%;
+  user-select: none; -webkit-user-select: none; pointer-events: none;
+  -webkit-mask-image: linear-gradient(90deg, transparent, #000 7%, #000 93%, transparent),
+                      linear-gradient(180deg, transparent, #000 7%, #000 93%, transparent);
+  -webkit-mask-composite: source-in;
+          mask-image: linear-gradient(90deg, transparent, #000 7%, #000 93%, transparent),
+                      linear-gradient(180deg, transparent, #000 7%, #000 93%, transparent);
+          mask-composite: intersect;
+}
+
+/* ---------------------------------------------------------------------
+   TELA (vidro do monitor)
+   --------------------------------------------------------------------- */
+.screen {
+  position: absolute;
+  left:   calc(var(--sx) / var(--img-px) * 100%);
+  top:    calc(var(--sy) / var(--img-px) * 100%);
+  width:  calc(var(--sw) / var(--img-px) * 100%);
+  height: calc(var(--sh) / var(--img-px) * 100%);
+  overflow: hidden;
+  border-radius: calc(var(--S) * 0.009);        /* cantos levemente arredondados */
+  background: #000;
+  box-shadow: 0 0 calc(var(--S) * 0.03) rgba(160, 185, 255, .16);   /* luz da tela no ambiente */
+}
+
+.screen__frame {
+  position: absolute; left: 0; top: 0; border: 0;
+  width: calc(var(--vw-site) * 1px);
+  height: calc(var(--vw-site) * var(--sh) / var(--sw) * 1px);      /* mesma proporcao da tela */
+  transform-origin: 0 0;
+  transform: scale(var(--k, 0.75));                                  /* --k vem de retro.js */
+  background: #000;
+}
+/* O portfolio "liga" como um CRT: pico de brilho que assenta */
+.screen__frame.is-on { animation: crt-on 650ms ease-out both; }
+@keyframes crt-on {
+  0%   { filter: brightness(3.2) contrast(1.5) saturate(.4); }
+  35%  { filter: brightness(1.5) contrast(1.15); }
+  100% { filter: none; }
+}
+
+/* Brilho de vidro e leve vinheta nas bordas (nao captura cliques) */
+.screen__glass {
+  position: absolute; inset: 0; z-index: 5; pointer-events: none; border-radius: inherit;
+  background: linear-gradient(118deg, rgba(255,255,255,.075) 0%, rgba(255,255,255,.02) 24%, transparent 40%);
+  box-shadow:
+    inset 0 0 0 1px rgba(255,255,255,.05),
+    inset 0 0 calc(var(--S) * 0.02) rgba(0,0,0,.35),
+    inset 0 0 calc(var(--S) * 0.06) rgba(0,0,0,.18);
+}
+
+/* ---------------------------------------------------------------------
+   BOOT: tela preta com o botao INICIAR, por cima do iframe
+   --------------------------------------------------------------------- */
+.boot {
+  position: absolute; inset: 0; z-index: 3;
+  display: grid; place-items: center;
+  background: #000;
+  font-size: calc(var(--S) * 0.0125);           /* tudo no boot usa em, escalando com a cena */
+  transition: opacity 380ms ease-out;
+}
+.boot.is-leaving { opacity: 0; pointer-events: none; }
+.boot.is-done    { display: none; }
+
+/* Botao e estatica ficam ocultos ate a foto estar pronta */
+.boot__stage { opacity: 0; }
+.room.is-ready .boot__stage { animation: boot-in 600ms ease-out var(--boot-delay) both; }
+@keyframes boot-in { from { opacity: 0; transform: translateY(.4em); } to { opacity: 1; transform: none; } }
+
+.boot__btn {
+  font: 500 1em/1 ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace;
+  letter-spacing: .32em; text-transform: uppercase;
+  padding: .85em 1.5em .85em 1.82em;            /* compensa o espaco apos a ultima letra */
+  color: var(--phosphor); background: transparent;
+  border: .12em solid currentColor; border-radius: .2em;
+  text-shadow: 0 0 .6em rgba(141, 255, 192, .65);
+  box-shadow: 0 0 1.4em rgba(141, 255, 192, .22), inset 0 0 1.2em rgba(141, 255, 192, .1);
+  cursor: pointer;
+  transition: background-color 160ms var(--ease), color 160ms var(--ease);
+}
+/* Pisca: ~60% aceso, ~40% apagado. Comeca logo depois de o botao aparecer. */
+.room.is-ready .boot__btn { animation: blink 1.2s linear var(--blink-delay) infinite; }
+@keyframes blink { 0%, 58% { opacity: 1; } 59%, 100% { opacity: .08; } }
+
+/* Hover: para de piscar e inverte as cores (feedback imediato) */
+.room.is-ready .boot__btn:hover {
+  animation: none; opacity: 1;
+  background: var(--phosphor); color: #02130a; text-shadow: none;
+}
+/* Foco (o botao recebe foco ao fim do zoom para Enter iniciar): so um contorno,
+   sem parar o pisca */
+.boot__btn:focus-visible { outline: .1em dashed var(--phosphor); outline-offset: .4em; }
+.boot__btn:active { transform: scale(.97); }
+
+/* Estatica (canvas desenhado em retro.js) */
+.boot__static {
+  position: absolute; inset: 0; width: 100%; height: 100%;
+  image-rendering: pixelated;
+  opacity: 0; pointer-events: none;
+  transition: opacity 140ms linear;
+}
+
+/* Ao clicar: o botao some num clarao e a estatica toma conta da tela */
+.boot.is-starting .boot__stage { animation: boot-out 200ms ease-in both; pointer-events: none; }
+.boot.is-starting .boot__btn   { animation: none; opacity: 1; }
+.boot.is-starting .boot__static { opacity: 1; }
+@keyframes boot-out { from { opacity: 1; transform: none; filter: brightness(1); }
+                      to   { opacity: 0; transform: scale(1.08); filter: brightness(2.4); } }
+
+/* ---------------------------------------------------------------------
+   LINK PARA TELA CHEIA
+   --------------------------------------------------------------------- */
+.fullscreen-link {
+  position: fixed; right: 16px; bottom: 14px; z-index: 5;
+  padding: 7px 11px; border-radius: 8px;
+  font: 12px/1 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  color: rgba(255,255,255,.55); text-decoration: none;
+  background: rgba(0,0,0,.4); border: 1px solid rgba(255,255,255,.12);
+  transition: color 160ms var(--ease), border-color 160ms var(--ease);
+}
+.fullscreen-link:hover { color: #fff; border-color: rgba(255,255,255,.35); }
+.fullscreen-link:focus-visible { outline: 2px solid #fff; outline-offset: 3px; }
+
+/* ---------------------------------------------------------------------
+   CELULARES: a tela do monitor ficaria pequena demais para ler.
+   A tela de boot e o portfolio ocupam a janela inteira (sem a cena).
+   --------------------------------------------------------------------- */
+@media (max-width: 700px) {
+  :root { --boot-delay: 250ms; --blink-delay: 900ms; }
+  .room::before, .scene__bg, .screen__glass, .fullscreen-link { display: none; }
+  .scene { position: fixed; inset: 0; width: auto; height: auto; animation: none; transform: none; }
+  .screen { left: 0; top: 0; width: 100%; height: 100%; border-radius: 0; box-shadow: none; }
+  .screen__frame { width: 100%; height: 100%; transform: none; }
+  .boot { font-size: 1.15rem; }
+}
+
+/* Menos movimento: sem zoom, sem piscar, sem estatica animada */
+@media (prefers-reduced-motion: reduce) {
+  .scene { animation: none; }
+  .room.is-ready .boot__stage { animation: none; opacity: 1; }
+  .room.is-ready .boot__btn   { animation: none; }
+  .screen__frame.is-on { animation: none; }
+}
+
+/* =====================================================================
+   MOLDURA VHS DA CÂMERA DE SEGURANÇA (HUD FIXO)
+   ===================================================================== */
+.vhs-hud {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  pointer-events: none; /* Deixa os cliques passarem normalmente para o monitor */
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: 2.5rem;
+  font-family: 'VT323', ui-monospace, monospace;
+  color: #ff3333;
+  font-size: clamp(1.2rem, 2vw, 1.8rem);
+  text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.9), 0 0 8px rgba(255, 0, 0, 0.6);
+  user-select: none;
+}
+
+.vhs-hud__row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
+}
+
+.vhs-hud__item {
+  display: flex;
+  gap: 1.2rem;
+  align-items: center;
+}
+
+/* Ponto Vermelho do REC a piscar */
+.vhs-rec-dot {
+  color: #ff0000;
+  animation: vhsBlink 1s step-start infinite;
+}
+
+@keyframes vhsBlink {
+  50% { opacity: 0; }
+}
+
+/* Mira Central (+), sutil */
+.vhs-hud__crosshair {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  font-size: 2.5rem;
+  color: rgba(255, 255, 255, 0.2);
+  text-shadow: none;
+}
+
+/* Oculta os efeitos em ecrãs de telemóveis para evitar poluição visual */
+@media (max-width: 700px) {
+  .vhs-hud { display: none; }
+}
+
+/* =====================================================================
+   INTRO OVERLAY (Vídeo em Tela Cheia com Fade-out)
+   ===================================================================== */
+.intro-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 9999; /* Fica acima de todo o site e do HUD */
+  background-color: #000000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: opacity 1.2s cubic-bezier(0.4, 0, 0.2, 1), visibility 1.2s;
+}
+
+/* Quando o vídeo acaba, esta classe faz ele sumir suavemente */
+.intro-overlay.fade-out {
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+}
+
+.intro-video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover; /* Preenche a tela sem distorcer */
+}
+
+/* =====================================================================
+   VÍDEO DE INTRODUÇÃO (FADE-OUT)
+   ===================================================================== */
+.intro-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 9999; /* Fica por cima de tudo durante a abertura */
+  background-color: #000000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: opacity 1s ease-out, visibility 1s;
+}
+
+.intro-overlay.fade-out {
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+}
+
+.intro-video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover; /* Garante que o vídeo preencha o ecrã sem distorcer */
+}
+
+/* =====================================================================
+   TEXTO DE INTRODUÇÃO (BY DANIEL OLIVEIRA - GLITCH VHS)
+   ===================================================================== */
+.intro-title {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 10000;
+  
+  font-family: 'VT323', monospace;
+  font-size: clamp(2rem, 5vw, 4.5rem);
+  letter-spacing: 0.35em;
+  color: #ffffff;
+  text-transform: uppercase;
+  white-space: nowrap;
+  pointer-events: none;
+  
+  /* Sombra VHS Cyan/Red offset */
+  text-shadow: 
+    -2px 0 #ff0055, 
+     2px 0 #00ffff,
+     0 0 12px rgba(255, 255, 255, 0.8);
+  
+  /* Animação de relâmpago rápido no chiado */
+  animation: vhsGlitchFlash 0.8s ease-in-out forwards;
+}
+
+@keyframes vhsGlitchFlash {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(0.9);
+    filter: blur(4px);
+  }
+  20% {
+    opacity: 1;
+    transform: translate(-52%, -50%) skewX(-10deg);
+    filter: blur(0);
+  }
+  35% {
+    opacity: 0.2;
+    transform: translate(-48%, -50%) skewX(12deg);
+  }
+  50% {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1.05);
+  }
+  80% {
+    opacity: 0.9;
+    transform: translate(-50%, -50%) scale(1);
+    filter: blur(0);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(1.1);
+    filter: blur(6px);
+  }
+}
+
+html, body {
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  overflow: hidden !important; /* Impede que a página pai role sob qualquer circunstância */
+  background: #07060b;
+}
