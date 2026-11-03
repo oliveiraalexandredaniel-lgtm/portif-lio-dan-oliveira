@@ -37,7 +37,7 @@
       ],
       tags: ['FastAPI', 'SQLite', 'JavaScript', 'REST'],
       links: [
-        { label: 'Código no GitHub', url: 'https://github.com/seu-usuario/task-diet' },
+        { label: 'Código no GitHub', url: 'https://github.com/oliveiraalexandredaniel-lgtm/task-diet' },
       ],
     },
     {
@@ -58,7 +58,7 @@
       ],
       tags: ['Python', 'Bot', 'API', 'Agendamento', 'Trabalho em equipe'],
       links: [
-        { label: 'Código no GitHub', url: 'https://github.com/seu-usuario/bot-vacinacao' },
+        { label: 'Código no GitHub', url: 'https://github.com/PI-Nexus/Projeto-Integrador-I' },
       ],
     },
     {
@@ -69,9 +69,9 @@
       title: 'Próximo projeto',
       subtitle: 'Espaço reservado',
       summary:
-        'Este card mantém o anel do carrossel equilibrado. Substitua pelo seu próximo projeto editando o arquivo data.js.',
+        'Substituir pelo próximo projeto (no arquivo data.js).',
       description:
-        'Aqui entra o seu próximo projeto. Basta editar este objeto em data.js (ou removê-lo). O carrossel se reorganiza automaticamente.',
+        'Aqui entra o seu próximo projeto. obs.: O carrossel se reorganiza automaticamente.',
       highlights: ['Edite título, descrição e tags', 'Adicione links do GitHub ou demo', 'Inclua quantos projetos quiser'],
       tags: ['Go', 'React', 'SQL'],
       links: [],
